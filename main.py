@@ -1,25 +1,270 @@
-import turtle
-from rectangle import Rectangle
-from triangle import Triangle
-from circle import Circle
+import math
+import random
 
-jano = turtle.Turtle()
-jano.speed(5)
+import pyglet
+from pyglet import gl
+from pyglet.window import key
 
-rectangle_1 = Rectangle(30,30,60,100)
-rectangle_1.setColor("purple")
-rectangle_1.draw(jano)
+"---------Globalne konštanty a premenne----------"
 
-rectangle_2 = Rectangle(-85,85,160,40)
-rectangle_2.setColor("red")
-rectangle_2.draw(jano)
+"Window constants"
+WIDTH = 1200
+HEIGHT = 800
 
-triangle = Triangle(60,0,100)
-triangle.setColor("black")
-triangle.draw(jano)
+"Game constants"
+ACCELERATION = 400  # Zrýchlenie rakety
+ROTATION_SPEED = 0.1  # Rýchlosť otáčania rakety
 
-circle = Circle(0,0,40)
-circle.setColor("orange")
-circle.draw(jano)
+objects = []  # ZOZNAM VŠETKÝCH AKTÍVNYCH OBJEKTOV V HRE
+batch = pyglet.graphics.Batch()  # ZOZNAM SPRITOV PRE ZJEDNODUŠENÉ VYKRESLENIE
+pressed_keyboards = set()  # MNOŽINA ZMAČKNUTÝCH KLÁVES
 
-turtle.exitonclick()
+"------------------- FUNKCIE __________________"
+
+"""
+Vycentruj ukotvenie obrázka na stred
+"""
+
+
+def set_anchor_of_image_to_center(img):
+    img.anchor_x = img.width // 2
+    img.anchor_y = img.height // 2
+
+
+"----------------VLASTNÉ TRIEDY----------------"
+
+"""
+Rodičovská trieda
+"""
+
+
+class SpaceObject:
+    # Todo 1: Vytvorenie rodičovskej triedy
+    "Konštruktor"
+
+    def __init__(self, sprite, x, y):
+        self.x_speed = 0
+        self.y_speed = 0
+        self.rotation = 1.57  # radiany -> hodnota 1.57 smeruje nahor
+
+        self.sprite = pyglet.sprite.Sprite(sprite, batch=batch)
+        self.sprite.x = x
+        self.sprite.y = y
+
+    """
+    Metóda pre kontrolu pozície či sa nachádzame na okraji
+    """
+
+    def checkBoundaries(self):
+        if self.sprite.x > WIDTH:
+            self.sprite.x = 0
+
+        if self.sprite.x < 0:
+            self.sprite.x = WIDTH
+
+        if self.sprite.y < 0:
+            self.sprite.y = HEIGHT
+
+        if self.sprite.y > HEIGHT:
+            self.sprite.y = 0
+
+    """
+    Každý frame sa vykoná táto metóda to znamená v našom prípade:
+    60 simkov * za sekundu
+    Mechanic of spaceship - rotation, movement, controls
+    """
+
+    def tick(self, dt):
+        "Posunutie vesmírnej lode na novú pozíciu"
+        self.sprite.x += dt * self.x_speed
+        self.sprite.y += dt * self.y_speed
+        self.sprite.rotation = 90 - math.degrees(self.rotation)
+
+        "Kontrola či sme prešli kraj"
+        self.checkBoundaries()
+
+
+class Asteroid(SpaceObject):
+    def tick(self, dt):
+        self.x_speed = self.x_speed + dt * ACCELERATION * math.cos(self.rotation - random.randint(0, 4))
+        self.y_speed = self.y_speed + dt * ACCELERATION * math.sin(self.rotation - random.randint(0, 4))
+
+        SpaceObject.tick(self, dt)
+
+"""
+Trieda Spaceship
+Hlavný objekt hry, predstavuje hráča
+"""
+
+
+class Spaceship(SpaceObject):
+    # Todo 1: Presunťe metódy ktoré budú spoločné pre všetky objekty do triedy spaceObject
+
+    def tick(self, dt):
+        "Zrýchlenie po kliknutí klávesy W. Výpočet novej rýchlosti"
+        if 'W' in pressed_keyboards:
+            self.x_speed = self.x_speed + dt * ACCELERATION * math.cos(self.rotation)
+            self.y_speed = self.y_speed + dt * ACCELERATION * math.sin(self.rotation)
+
+        "Spomalenie/spätný chod po kliknutí klávesy S"
+        if 'S' in pressed_keyboards:
+            self.x_speed = self.x_speed - dt * ACCELERATION * math.cos(self.rotation)
+            self.y_speed = self.y_speed - dt * ACCELERATION * math.sin(self.rotation)
+
+        "Otočenie doľava - A"
+        if 'A' in pressed_keyboards:
+            self.rotation += ROTATION_SPEED
+
+        "Otočenie doprava - D"
+        if 'D' in pressed_keyboards:
+            self.rotation -= ROTATION_SPEED
+
+        "Ručná brzda - SHIFT"
+        if 'SHIFT' in pressed_keyboards:
+            self.x_speed = 0
+            self.y_speed = 0
+
+        SpaceObject.tick(self, dt)
+
+
+"""
+GAME WINDOW CLASS
+"""
+
+
+class Game:
+    """
+    Konstruktor
+    """
+
+    def __init__(self):
+        self.window = None
+        self.game_objects = []
+
+    """
+    Načítanie všetkých spritov
+    """
+
+    def load_resources(self):
+        self.playerShip_image = pyglet.image.load('Assetss/PNG/playerShip1_blue.png')
+        set_anchor_of_image_to_center(self.playerShip_image)
+        self.background_image = pyglet.image.load('Assetss/Backgrounds/black.png')
+        # Todo 2: Loadnutie viac typov asteroidov do listu
+        self.asteroid_brown_big = pyglet.image.load('Assetss/PNG/Meteors/meteorBrown_big1.png')
+        self.asteroid_brown_med = pyglet.image.load('Assetss/PNG/Meteors/meteorBrown_med1.png')
+        self.asteroid_grey_med = pyglet.image.load('Assetss/PNG/Meteors/meteorGrey_med1.png')
+        self.asteroid_grey_tiny = pyglet.image.load('Assetss/PNG/Meteors/meteorGrey_tiny1.png')
+
+    """
+    Vytvorenie objektov pre začiatok hry
+    """
+
+    def init_objects(self):
+        # Vytvorenie lode
+        spaceShip = Spaceship(self.playerShip_image, WIDTH // 2, HEIGHT // 2)
+        self.game_objects.append(spaceShip)
+
+        # Nastavenie pozadia a prescalovanie
+        self.background = pyglet.sprite.Sprite(self.background_image)
+        self.background.scale_x = 6
+        self.background.scale_y = 4
+
+        # Vytvorenie Meteoritov
+        # Todo 2
+        self.create_asteroids(2)
+
+    def create_asteroids(self, count):
+        for i in range(count): #count per asteroid
+            self.create_asteroid(self.asteroid_brown_med)
+            self.create_asteroid(self.asteroid_brown_big)
+            self.create_asteroid(self.asteroid_grey_med)
+            self.create_asteroid(self.asteroid_grey_tiny)
+
+    def create_asteroid(self, type):
+        self.game_objects.append(Asteroid(sprite=type, x=random.randint(10, WIDTH), y=random.randint(10, HEIGHT)))
+
+    """
+    Event metóda ktorá sa volá na udalosť on_draw stále dookola
+    """
+
+    def draw_game(self):
+        # Vymaže aktualny obsah okna
+        self.window.clear()
+        # Vykreslenie pozadia
+        self.background.draw()
+
+        # Táto časť sa stará o to aby bol prechod cez okraje okna plynulý a nie skokový
+        for x_offset in (-self.window.width, 0, self.window.width):
+            for y_offset in (-self.window.height, 0, self.window.height):
+                # Remember the current state
+                gl.glPushMatrix()
+                # Move everything drawn from now on by (x_offset, y_offset, 0)
+                gl.glTranslatef(x_offset, y_offset, 0)
+
+                # Draw !!! -> Toto vykreslí všetky naše sprites
+                batch.draw()
+
+                # Restore remembered state (this cancels the glTranslatef)
+                gl.glPopMatrix()
+
+    """
+    Event metóda pre spracovanie klávesových vstupov
+    """
+
+    def key_press(self, symbol, modifikatory):
+        if symbol == key.W:
+            pressed_keyboards.add('W')
+        if symbol == key.S:
+            pressed_keyboards.add('S')
+        if symbol == key.A:
+            pressed_keyboards.add('A')
+        if symbol == key.D:
+            pressed_keyboards.add('D')
+        if symbol == key.LSHIFT:
+            pressed_keyboards.add('SHIFT')
+
+    """
+    Event metóda pre spracovanie klávesových výstupov
+    """
+
+    def key_release(self, symbol, modifikatory):
+        if symbol == key.W:
+            pressed_keyboards.discard('W')
+        if symbol == key.S:
+            pressed_keyboards.discard('S')
+        if symbol == key.A:
+            pressed_keyboards.discard('A')
+        if symbol == key.D:
+            pressed_keyboards.discard('D')
+        if symbol == key.LSHIFT:
+            pressed_keyboards.discard('SHIFT')
+
+    """
+    Start game metóda 
+    """
+
+    def start(self):
+        "Vytvorenie hlavneho okna"
+        self.window = pyglet.window.Window(width=WIDTH, height=HEIGHT)
+
+        "Nastavenie udalosti (eventov)"
+        self.window.push_handlers(
+            on_draw=self.draw_game,
+            on_key_press=self.key_press,
+            on_key_release=self.key_release
+        )
+
+        "Load resources"
+        self.load_resources()
+
+        "Inicializacia objektov"
+        self.init_objects()
+
+        "Nastavenie timeru pre update všetkých objektov v intervale 1./60 = 60FPS"
+        for object in self.game_objects:
+            pyglet.clock.schedule_interval(object.tick, 1. / 60)
+        pyglet.app.run()  # all is set, the game can start
+
+
+"----------- StartGame -----------"
+Game().start()
