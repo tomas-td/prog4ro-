@@ -86,8 +86,8 @@ class SpaceObject:
 
 class Asteroid(SpaceObject):
     def tick(self, dt):
-        self.x_speed = self.x_speed + dt * ACCELERATION * math.cos(self.rotation - random.randint(0, 4))
-        self.y_speed = self.y_speed + dt * ACCELERATION * math.sin(self.rotation - random.randint(0, 4))
+        self.x_speed = self.x_speed + 1 * 5 * math.cos(self.rotation - random.randint(0, 4))
+        self.y_speed = self.y_speed + 1 * 5 * math.sin(self.rotation - random.randint(0, 4))
 
         SpaceObject.tick(self, dt)
 
