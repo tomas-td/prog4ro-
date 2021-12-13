@@ -161,8 +161,9 @@ class Game:
         self.background_image = pyglet.image.load('Assetss/Backgrounds/blue.png')
         self.asteroid_images = ['Assetss/PNG/Meteors/meteorGrey_big3.png',
                            'Assetss/PNG/Meteors/meteorGrey_small2.png',
-                           'Assetss/PNG/Meteors/meteorGrey_med1.png',
-                           'Assetss/PNG/Meteors/meteorGrey_big2.png']
+                           'Assetss/PNG/Meteors/meteorBrown_med3.png',
+                           'Assetss/PNG/Meteors/meteorBrown_big3.png',
+                           'Assetss/PNG/Meteors/meteorBrown_tiny2.png']
     """
     Vytvorenie objektov pre začiatok hry
     """
