@@ -1,0 +1,39 @@
+vysledky = ["2:1", "5:5", "7:3", "4:2", "1:2"]
+tomas = [2, 8, 9]
+peter = [7, 9, 8, 12]
+jano = [1, 6, 5, 8]
+ty = [5, 2, 1, 3, 10]
+
+pocet_golov = []
+najlepsi = ["nikto", 0]
+
+
+def kontrola_trafenych(zoznam):
+    pocitadlo = 0
+    for tip in zoznam:
+        if tip in pocet_golov:
+            pocitadlo += 1
+    return pocitadlo
+
+
+def stanovenie_najlepsich(osoba, trefy):
+    if trefy == najlepsi[1]:
+        najlepsi.extend([osoba, trefy])
+    elif trefy > najlepsi[1]:
+        najlepsi.clear()
+        najlepsi.extend([osoba, trefy])
+
+
+for vysledok in vysledky:
+    strely = vysledok.split(":")
+    pocet_golov.append(int(strely[0]) + int(strely[1]))
+pocet_golov = set(pocet_golov)
+
+stanovenie_najlepsich("Jano", kontrola_trafenych(jano))
+stanovenie_najlepsich("Tomas", kontrola_trafenych(tomas))
+stanovenie_najlepsich("Peter", kontrola_trafenych(peter))
+stanovenie_najlepsich("ty", kontrola_trafenych(ty))
+
+print(f"Najlepsie trafili ({najlepsi[1]}):", end=" ")
+for i in range(int(len(najlepsi)/2)):
+    print(najlepsi[2*i], end=" ")
